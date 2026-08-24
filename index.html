@@ -648,6 +648,8 @@ footer a:hover{color:var(--gold)}
         </div>
       </div>
       <form class="reveal" id="leadForm" novalidate>
+        <input type="hidden" name="_subject" value="New Mortgage Inquiry from martyfeketemortgages.ca">
+        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
         <h3>Request a Call Back</h3>
         <p>Tell me a bit about what you need and I'll follow up by phone or email.</p>
         <div class="form-row"><div class="field"><label for="name">Full name *</label><input type="text" id="name" name="name" required autocomplete="name"></div><div class="field"><label for="phone">Phone *</label><input type="tel" id="phone" name="phone" required autocomplete="tel"></div></div>
@@ -798,12 +800,40 @@ function calc(){
 [price,down,rate].forEach(el=>el.addEventListener('input',calc));
 document.querySelectorAll('.term-btns button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.term-btns button').forEach(x=>x.classList.remove('active'));b.classList.add('active');years=+b.dataset.yr;calc()}));
 calc();
-document.getElementById('leadForm').addEventListener('submit',function(ev){
-  ev.preventDefault();const f=this,msg=document.getElementById('formMsg');
-  if(!f.name.value||!f.phone.value||!f.email.value){msg.textContent='Please fill in your name, phone, and email.';msg.classList.add('show');return}
-  const body=`Name: ${f.name.value}%0D%0APhone: ${f.phone.value}%0D%0AEmail: ${f.email.value}%0D%0AService: ${f.service.value||'—'}%0D%0A%0D%0AMessage:%0D%0A${encodeURIComponent(f.message.value)}`;
-  window.location.href=`mailto:marty@cpmg.ca?subject=New Mortgage Inquiry from ${encodeURIComponent(f.name.value)}&body=${body}`;
-  msg.textContent='Thanks! Your email app should open to send your request. Prefer to talk now? Call 403.308.4439.';msg.classList.add('show');f.reset();
+/* ---------------------------------------------------------------------------
+   CONTACT FORM — Formspree
+   Submissions post to the Formspree endpoint below and are delivered by email.
+   To change the destination, update the endpoint ID in FORMSPREE_ENDPOINT.
+--------------------------------------------------------------------------- */
+const FORMSPREE_ENDPOINT='https://formspree.io/f/xwledpke';
+
+document.getElementById('leadForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  const f=this,msg=document.getElementById('formMsg'),btn=f.querySelector('button[type="submit"]');
+  msg.classList.add('show');
+  if(!f.name.value||!f.phone.value||!f.email.value){
+    msg.textContent='Please fill in your name, phone, and email.';return;
+  }
+  const btnText=btn.textContent;btn.disabled=true;btn.textContent='Sending…';
+  try{
+    const res=await fetch(FORMSPREE_ENDPOINT,{
+      method:'POST',
+      headers:{'Accept':'application/json'},
+      body:new FormData(f)
+    });
+    if(res.ok){
+      msg.textContent='Thanks! Your request has been sent \u2014 I\u2019ll follow up shortly. Prefer to talk now? Call 403.308.4439.';
+      f.reset();
+    }else{
+      const data=await res.json().catch(()=>({}));
+      const err=(data&&data.errors&&data.errors.map(e=>e.message).join(', '))||'';
+      msg.innerHTML='Sorry, something went wrong'+(err?' ('+err+')':'')+'. Please call <a href="tel:+14033084439" style="color:var(--burgundy);font-weight:600">403.308.4439</a> or email <a href="mailto:marty@cpmg.ca" style="color:var(--burgundy);font-weight:600">marty@cpmg.ca</a>.';
+    }
+  }catch(_){
+    msg.innerHTML='Couldn\u2019t reach the server. Please call <a href="tel:+14033084439" style="color:var(--burgundy);font-weight:600">403.308.4439</a> or email <a href="mailto:marty@cpmg.ca" style="color:var(--burgundy);font-weight:600">marty@cpmg.ca</a>.';
+  }finally{
+    btn.disabled=false;btn.textContent=btnText;
+  }
 });
 
 /* Legal modals */
